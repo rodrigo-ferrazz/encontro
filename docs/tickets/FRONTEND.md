@@ -231,6 +231,13 @@ ficou de fora.
 
 ## FE-10 · Spike: trânsito ao vivo nas arestas · M (investigação)
 
+**Status:** feito — ver [`docs/FE-10-transito-por-rua.md`](../FE-10-transito-por-rua.md).
+Tecnicamente viável e mais fácil que o previsto: a geometria da TomTom fica a 1 m (mediana)
+das ruas do OSM, e 89% dos trechos do centro têm fluxo no z14. Ruas residenciais só aparecem
+a partir do z14 (333 tiles para a cidade). Só vem `relative_speed`: com a nossa chave,
+`absolute_speed` e `openlr` não voltam. **Bloqueio: os termos de uso não foram lidos** (a
+página não carregou fora do navegador). Recomendação: ler os termos antes de implementar.
+
 - Avaliar o **TomTom Traffic Flow** em *vector tiles* (cota de tiles bem maior: 50 mil por
   dia) para obter a velocidade atual por trecho e casar com as arestas do OSM.
 - Riscos: casar trechos TomTom com o OSM (map matching), cobertura nas ruas pequenas e

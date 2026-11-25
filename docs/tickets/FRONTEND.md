@@ -168,6 +168,14 @@ rota desenhada é a do grafo local (sem trânsito).
 
 ## FE-07 · Formulário de entrada (front) · M
 
+**Status:** feito. Aba "Busca" no painel: pessoas (nome + endereço, até 12), geocodificação
+ao confirmar o endereço (Enter/sair do campo, sem autocompletar) e marcador arrastável para
+corrigir; a posição confirmada vai para a API como "lat, lon". Opções: onde, critério,
+métrica, K, limite (obrigatório no critério limite) e trânsito ao vivo; validação igual à
+da CLI (`web/src/state.ts`, com testes). A busca fica na URL
+(`?p=Nome|endereço|lat,lon&criterio=…&k=…`): abrir o link refaz a busca sozinho. Sem link,
+a página abre com o exemplo preenchido e espera o clique em Buscar.
+
 **Escopo**
 - Adicionar/remover pessoas (nome + endereço), com geocodificação ao confirmar (sem
   autocomplete, ver limitações) e um marcador arrastável para corrigir a posição.

@@ -20,16 +20,7 @@ function link(href: string, text: string, cls?: string): HTMLAnchorElement {
 
 export class ResultsPanel {
   private cards: HTMLElement[] = [];
-  constructor(
-    private root: HTMLElement,
-    private body: HTMLElement,
-    toggle: HTMLButtonElement,
-  ) {
-    toggle.addEventListener("click", () => {
-      const collapsed = root.classList.toggle("collapsed");
-      toggle.setAttribute("aria-expanded", String(!collapsed));
-    });
-  }
+  constructor(private body: HTMLElement) {}
 
   render(cards: ResultCard[], warnings: string[], onSelect: (i: number) => void): void {
     this.body.replaceChildren();
@@ -71,7 +62,6 @@ export class ResultsPanel {
       this.body.append(ul);
     }
     if (!cards.length) this.body.prepend(el("p", undefined, "Nenhum resultado."));
-    this.root.hidden = false;
   }
 
   select(i: number | null): void {

@@ -2,7 +2,9 @@ import { decodeFlood, decodeMesh, type Flood, type Mesh } from "./binary";
 import { computeFloodPieces, personColor } from "./flood";
 import { buildPieces, extent, Projection, ringPieces, type Pieces } from "./geometry";
 import { MarkerLayer, type Marker } from "./markers";
+import { SearchForm, type GeocodeResult } from "./form";
 import { ResultsPanel } from "./panel";
+import { parseQuery, requestBody, toQuery, type SearchState } from "./state";
 import { resultCards, routePieces, segmentIndex, shortPlace, type ApiSearch } from "./results";
 import { FloodBatch, hex, LineBatch, Renderer } from "./renderer";
 import { fmtSim, Timeline } from "./timeline";
@@ -21,7 +23,7 @@ const fpsEl = $("fps");
 const params = new URLSearchParams(location.search);
 const debug = params.has("debug");
 
-// Pessoas de exemplo (o mesmo exemplo.yaml da CLI) até o formulário do FE-07.
+// Exemplo (o mesmo exemplo.yaml da CLI) para quem abre a página sem link.
 const DEMO = [
   { nome: "Ana", endereco: "Avenida Paulista, 1578" },
   { nome: "Bruno", endereco: "Rua Augusta, 2690" },
@@ -53,6 +55,13 @@ async function fetchFlood(body: unknown): Promise<Flood> {
   return decodeFlood(await res.arrayBuffer());
 }
 
+async function geocode(q: string): Promise<GeocodeResult> {
+  const res = await fetch(`${API}/geocode?q=${encodeURIComponent(q)}`);
+  if (res.status === 404) throw new Error("endereço não encontrado");
+  if (!res.ok) throw new Error(`erro ${res.status} ao localizar`);
+  return res.json();
+}
+
 class App {
   renderer = new Renderer(canvas);
   cam = new Camera();
@@ -68,7 +77,8 @@ class App {
   routeNodes: (number[] | null)[][] = [];
   segIdx: Map<number, number> | null = null;
   lastSearch: ApiSearch | null = null;
-  panel = new ResultsPanel($("results"), $("results-body"), $<HTMLButtonElement>("results-toggle"));
+  panel = new ResultsPanel($("results-body"));
+  people: Marker[] = [];
   colors = [] as ReturnType<typeof hex>[];
   dirty = true;
   userMoved = false;
@@ -107,12 +117,9 @@ class App {
     this.unit = h.unidade;
     this.colors = Array.from({ length: h.pessoas }, (_, i) => hex(personColor(i)));
 
-    this.markers.clear();
+    for (const m of this.pins) this.markers.remove(m);
     const res = h.resultado as ApiSearch;
     this.lastSearch = res;
-    res.pessoas.forEach((p, i) =>
-      this.markers.add(p.lat, p.lon, { label: `${p.nome} · ${shortPlace(p.endereco)}`, color: personColor(i) }),
-    );
     // demais do top-K: pinos menores e numerados (desenhados antes, ficam por baixo do 1º)
     const cards = resultCards(res);
     this.pins = [];
@@ -178,6 +185,23 @@ class App {
       bottom: wide ? 110 : view.bottom - panel.top + 40,
     }, false);
     this.userMoved = true;
+  }
+
+  /** Marcadores arrastáveis das pessoas com posição conhecida. */
+  renderPeople(state: SearchState, onDrag: (i: number, lat: number, lon: number) => void): void {
+    for (const m of this.people) this.markers.remove(m);
+    this.people = [];
+    let color = 0; // mesma ordem das pessoas mandadas à API (linhas vazias não contam)
+    state.pessoas.forEach((p, i) => {
+      if (!p.nome.trim() && !p.endereco.trim()) return;
+      const c = color++;
+      if (p.lat === undefined || p.lon === undefined) return;
+      const label = p.endereco.trim() ? `${p.nome || "?"} · ${shortPlace(p.endereco)}` : p.nome;
+      this.people.push(
+        this.markers.add(p.lat, p.lon, { label, color: personColor(c), onDrag: (lat, lon) => onDrag(i, lat, lon) }),
+      );
+    });
+    this.dirty = true;
   }
 
   bindControls(tl: Timeline): void {
@@ -258,30 +282,88 @@ class App {
   }
 }
 
-function peopleFromUrl(): { nome: string; endereco: string }[] {
-  const ps = params.getAll("p").map((s) => {
-    const [nome, ...rest] = s.split("|");
-    return { nome: nome.trim(), endereco: rest.join("|").trim() };
-  });
-  return ps.filter((p) => p.nome && p.endereco).length >= 2 ? ps : DEMO;
+function setTab(which: "busca" | "res"): void {
+  const busca = which === "busca";
+  $("tab-busca").setAttribute("aria-selected", String(busca));
+  $("tab-res").setAttribute("aria-selected", String(!busca));
+  $("busca").hidden = !busca;
+  $("results-body").hidden = busca;
+  $("results").classList.remove("collapsed");
 }
 
 async function start() {
+  const initial = parseQuery(params);
+  const fromLink = initial.pessoas.length >= 2;
+  if (!fromLink) initial.pessoas = DEMO.map((p) => ({ ...p }));
+
   const mesh = await fetchMesh();
   const proj = Projection.forMesh(mesh);
   const app = new App(mesh, proj, buildPieces(mesh, proj));
   app.run();
-  status.textContent = "Calculando o ponto de encontro…";
-  const flood = await fetchFlood({
-    pessoas: peopleFromUrl(),
-    criterio: params.get("criterio") ?? "justo",
-    ao_vivo: params.get("ao_vivo") === "1",
+
+  const side = $("results");
+  const toggle = $<HTMLButtonElement>("results-toggle");
+  toggle.onclick = () => {
+    const c = side.classList.toggle("collapsed");
+    toggle.setAttribute("aria-expanded", String(!c));
+    toggle.setAttribute("aria-label", c ? "Abrir painel" : "Recolher painel");
+  };
+  $("tab-busca").onclick = () => setTab("busca");
+  $("tab-res").onclick = () => setTab("res");
+
+  let searched = false;
+  const syncPeople = () =>
+    app.renderPeople(form.state, (i, lat, lon) => form.moved(i, lat, lon));
+
+  const run = async () => {
+    form.setBusy(true);
+    status.textContent = "Calculando o ponto de encontro…";
+    try {
+      const flood = await fetchFlood(requestBody(form.state));
+      const res = flood.header.resultado as ApiSearch;
+      // posições geocodificadas pelo servidor viram as posições confirmadas
+      const filled = form.state.pessoas.filter((p) => p.nome.trim() || p.endereco.trim());
+      filled.forEach((p, k) => {
+        if (p.lat === undefined && res.pessoas[k]) Object.assign(p, { lat: res.pessoas[k].lat, lon: res.pessoas[k].lon });
+      });
+      form.render();
+      syncPeople();
+      app.showFlood(flood);
+      searched = true;
+      const q = toQuery(form.state);
+      if (debug) q.set("debug", "");
+      history.replaceState(null, "", `${location.pathname}?${q}`);
+      $<HTMLButtonElement>("tab-res").disabled = false;
+      setTab("res");
+      const best = res.resultados[0];
+      status.textContent = best ? `Ponto de encontro: ${best.anfitriao ? `casa de ${best.anfitriao}` : (best.via ?? "sem nome")}` : "Nenhum ponto encontrado";
+      return flood;
+    } catch (e) {
+      status.textContent = `Erro: ${(e as Error).message}`;
+      setTab("busca");
+      return null;
+    } finally {
+      form.setBusy(false);
+    }
+  };
+
+  const form: SearchForm = new SearchForm($<HTMLFormElement>("busca"), initial, {
+    geocode,
+    change: () => {
+      syncPeople();
+      if (searched) status.textContent = "A busca mudou — clique em Buscar para recalcular.";
+    },
+    submit: () => void run(),
   });
-  app.showFlood(flood);
-  const r = Number(params.get("r")); // ?r=2: já abre com as rotas do 2º resultado
-  if (r >= 1) app.select(r - 1);
-  const best = flood.header.resultado.resultados[0];
-  status.textContent = best ? `Ponto de encontro: ${best.via ?? "sem nome"}` : "Nenhum ponto encontrado";
+  syncPeople();
+
+  if (fromLink) {
+    const flood = await run();
+    const r = Number(params.get("r")); // ?r=2: já abre com as rotas do 2º resultado
+    if (flood && r >= 1) app.select(r - 1);
+  } else {
+    status.textContent = "Monte a busca e clique em Buscar";
+  }
 }
 
 start().catch((e) => {

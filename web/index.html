@@ -15,9 +15,14 @@
         <h1>Encontro SP</h1>
         <p id="status" role="status">Carregando a malha…</p>
       </header>
-      <aside id="results" class="results" hidden aria-label="Resultados">
-        <button id="results-toggle" class="results-toggle" type="button" aria-expanded="true">Resultados</button>
-        <div id="results-body" class="results-body"></div>
+      <aside id="results" class="results" aria-label="Busca e resultados">
+        <div class="tabs" role="tablist">
+          <button id="tab-busca" class="tab" type="button" role="tab" aria-selected="true" aria-controls="busca">Busca</button>
+          <button id="tab-res" class="tab" type="button" role="tab" aria-selected="false" aria-controls="results-body" disabled>Resultados</button>
+          <button id="results-toggle" class="collapse" type="button" aria-expanded="true" aria-label="Recolher painel">▾</button>
+        </div>
+        <form id="busca" class="side-body" role="tabpanel" novalidate></form>
+        <div id="results-body" class="side-body" role="tabpanel" hidden></div>
       </aside>
       <section class="bottom">
         <div id="controls" class="controls" hidden>

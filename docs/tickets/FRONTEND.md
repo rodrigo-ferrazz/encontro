@@ -188,6 +188,15 @@ a página abre com o exemplo preenchido e espera o clique em Buscar.
 
 ## FE-08 · Coerência entre a animação e o trânsito ao vivo · P (decisão) + M
 
+**Status:** feito com a opção 2 (calibrar). `flood.live_factors`: para cada pessoa, mediana
+de `tempo ao vivo / tempo local` nos resultados que vieram da TomTom (limitada a 0,5–4×;
+sem medida própria, usa a mediana das outras); os tempos de chegada e o T* são multiplicados
+por esse fator. O cabeçalho do anexo diz `fonte` = `calibrada_ao_vivo` ou
+`estimativa_local`, e a tela mostra sempre uma legenda: "≈ Aproximação do trânsito ao vivo"
+(com os fatores e o aviso de que a inundação é o grafo local ajustado), "Estimativa sem
+trânsito" ou "Inundação por distância" (nunca calibrada). Testado com a TomTom real: fatores
+1,26 / 0,84 / 1,18 para 3 pessoas às 23 h (90 células da cota).
+
 **Por quê:** a inundação vem do **grafo local, sem trânsito**. A TomTom só devolve tempos
 para os M candidatos, não para cada rua. Com chave, o ponto vencedor pode não ser
 exatamente onde as frentes se cruzam.

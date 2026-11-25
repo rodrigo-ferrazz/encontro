@@ -93,6 +93,9 @@ export interface Flood {
     resultado?: any;
     /** rotas[r][i]: nós do caminho da pessoa i até o resultado r */
     rotas?: (number[] | null)[][];
+    /** FE-08: "estimativa_local" ou "calibrada_ao_vivo" (com os fatores por pessoa) */
+    fonte?: "estimativa_local" | "calibrada_ao_vivo";
+    fatores?: number[];
   };
   /** arrival[p * nos + v], em segundos ou metros; nao_alcancado = não chega */
   arrival: Uint16Array;

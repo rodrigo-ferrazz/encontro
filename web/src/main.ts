@@ -2,6 +2,7 @@ import { decodeFlood, decodeMesh, type Flood, type Mesh } from "./binary";
 import { computeFloodPieces, personColor } from "./flood";
 import { buildPieces, extent, Projection, ringPieces, type Pieces } from "./geometry";
 import { MarkerLayer, type Marker } from "./markers";
+import { floodLegend } from "./legend";
 import { SearchForm, type GeocodeResult } from "./form";
 import { ResultsPanel } from "./panel";
 import { parseQuery, requestBody, toQuery, type SearchState } from "./state";
@@ -135,6 +136,12 @@ class App {
     }
     this.meet = cards.length ? { el: this.pins[0].el, tStar: h.t_encontro } : null;
     this.routeNodes = h.rotas ?? [];
+    const lg = floodLegend(h, res.pessoas.map((p) => p.nome));
+    const legendEl = $("legend");
+    legendEl.hidden = false;
+    legendEl.classList.toggle("live", lg.live);
+    legendEl.querySelector(".legend-text")!.textContent = lg.text;
+    legendEl.querySelector(".info")!.textContent = lg.detail;
     this.panel.render(cards, res.avisos, (i) => this.select(i));
     this.select(null);
 

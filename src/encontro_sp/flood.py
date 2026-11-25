@@ -29,6 +29,8 @@ FORMAT_VERSION = 1
 UNREACHED = 65535
 MAX_VALUE = UNREACHED - 1  # ~18 h em segundos, ~65 km em metros
 DEFAULT_MARGIN = 0.15
+# Limites do fator de calibração ao vivo/local (protege contra uma medida absurda).
+CALIBRATION_RANGE = (0.5, 4.0)
 
 
 @dataclass
@@ -41,6 +43,8 @@ class FloodData:
     extra: dict | None = None  # anexado ao cabeçalho (ex.: o ranking de output.to_dict)
     # rotas[r][i]: nós do caminho (grafo local) da pessoa i até o resultado r (None = sem caminho)
     routes: list[list[list[int] | None]] | None = None
+    # FE-08: fator ao vivo/local aplicado aos tempos de cada pessoa (None = sem calibração)
+    factors: list[float] | None = None
 
     @property
     def header(self) -> dict:
@@ -59,6 +63,10 @@ class FloodData:
             h["resultado"] = self.extra
         if self.routes is not None:
             h["rotas"] = self.routes
+        # O que a animação representa — a tela nunca pode sugerir trânsito ao vivo sem ser.
+        h["fonte"] = "calibrada_ao_vivo" if self.factors is not None else "estimativa_local"
+        if self.factors is not None:
+            h["fatores"] = [round(f, 3) for f in self.factors]
         return h
 
     def encode(self) -> bytes:
@@ -85,23 +93,52 @@ def decode(blob: bytes) -> FloodData:
         meeting_node=header["no_encontro"],
         extra=header.get("resultado"),
         routes=header.get("rotas"),
+        factors=header.get("fatores"),
     )
 
 
-def meeting_time(sol: Solution) -> tuple[float, int | None]:
+def live_factors(sol: Solution) -> np.ndarray | None:
+    """Fator ao vivo/local de cada pessoa, medido nos resultados que vieram da TomTom.
+
+    É a mediana de `tempo_ao_vivo / tempo_local` entre os resultados com valor ao vivo para
+    aquela pessoa. Multiplicar os tempos locais pelo fator aproxima a inundação do trânsito
+    real (opção 2 do FE-08). Só vale para a métrica de tempo; sem nenhuma medida ao vivo,
+    devolve None. Pessoa sem medida própria usa a mediana das outras.
+    """
+    if sol.weight != "time" or sol.dist is None or not sol.results:
+        return None
+    n = sol.dist.shape[0]
+    per: list[float | None] = []
+    for i in range(n):
+        ratios = []
+        for r in sol.results:
+            local = sol.dist[i, r.node]
+            if r.live[i] and np.isfinite(r.time_s[i]) and np.isfinite(local) and local > 30:
+                ratios.append(r.time_s[i] / local)
+        per.append(float(np.median(ratios)) if ratios else None)
+    known = [f for f in per if f is not None]
+    if not known:
+        return None
+    fallback = float(np.median(known))
+    lo, hi = CALIBRATION_RANGE
+    return np.clip([f if f is not None else fallback for f in per], lo, hi)
+
+
+def meeting_time(sol: Solution, dist: np.ndarray | None = None) -> tuple[float, int | None]:
     """T*: quando a última pessoa chega ao 1º colocado, pelo grafo local.
 
     No critério "justo" é exatamente o maior deslocamento do vencedor, ou seja, o instante
     em que as frentes se encontram nele. Nos outros critérios a animação também vai até o
     vencedor (ver limitações no backlog).
     """
-    if sol.dist is None:
+    dist = sol.dist if dist is None else dist
+    if dist is None:
         raise ValueError("a solução não traz o Dijkstra local (dist)")
     if not sol.results:
-        finite = sol.dist[np.isfinite(sol.dist)]
+        finite = dist[np.isfinite(dist)]
         return (float(np.median(finite)) if finite.size else 0.0), None
     node = sol.results[0].node
-    col = sol.dist[:, node]
+    col = dist[:, node]
     return float(col[np.isfinite(col)].max(initial=0.0)), node
 
 
@@ -120,12 +157,18 @@ def routes(sol: Solution) -> list[list[list[int] | None]]:
     ]
 
 
-def build(sol: Solution, margin: float = DEFAULT_MARGIN, extra: dict | None = None) -> FloodData:
-    t_star, node = meeting_time(sol)
+def build(
+    sol: Solution, margin: float = DEFAULT_MARGIN, extra: dict | None = None, calibrate: bool = True
+) -> FloodData:
+    factors = live_factors(sol) if calibrate else None
+    d = sol.dist if factors is None else sol.dist * factors[:, None]
+    t_star, node = meeting_time(sol, d)
     t_end = min(t_star * (1 + margin), float(MAX_VALUE))
-    d = sol.dist
     arrival = np.full(d.shape, UNREACHED, dtype=np.uint16)
     ok = np.isfinite(d) & (d <= t_end)
     arrival[ok] = np.minimum(np.rint(d[ok]), MAX_VALUE).astype(np.uint16)
     unit = "s" if sol.weight == "time" else "m"
-    return FloodData(arrival, unit, t_star, t_end, node, extra, routes(sol))
+    return FloodData(
+        arrival, unit, t_star, t_end, node, extra, routes(sol),
+        factors=None if factors is None else [float(f) for f in factors],
+    )

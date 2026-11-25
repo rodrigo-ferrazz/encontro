@@ -1,0 +1,11 @@
+# Exemplo de entrada: uma lista de pessoas com nome e endereço.
+# Também aceita "lat, lon" no lugar do endereço.
+pessoas:
+  - nome: Ana
+    endereco: Avenida Paulista, 1578
+  - nome: Bruno
+    endereco: Rua Augusta, 2690
+  - nome: Carla
+    endereco: Praça Silvio Romero, Tatuapé
+  - nome: Diego
+    endereco: Avenida Engenheiro Luís Carlos Berrini, 1000

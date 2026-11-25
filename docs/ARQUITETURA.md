@@ -37,7 +37,7 @@ endereços ──► Geocoder ──► (lat, lon) ──► snap no nó mais pr
 
 ```
 src/encontro_sp/
-  graph.py        # download, limpeza (maior SCC), pesos, CSR, cache em disco (.npz + metadados)
+  graph.py        # download, limpeza (maior SCC), pesos, CSR, geometria das ruas/contorno, cache .npz versionado
   geocode.py      # Geocoder: TomTomGeocoder, NominatimGeocoder (1 req/s), cache em disco
   providers/
     base.py       # CostProvider.matrix(origins, candidates) -> CostMatrix(time_s, dist_m, source)

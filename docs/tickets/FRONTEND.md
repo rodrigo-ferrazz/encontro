@@ -15,6 +15,10 @@ Estimativas: **P** ≈ até 1 dia · **M** ≈ 2–3 dias · **G** ≈ 1 semana.
 
 ## FE-01 · Guardar a geometria das ruas no cache do grafo (backend) · M
 
+**Status:** feito. Cache v2 com 9,7 MB (179 mil trechos não dirigidos, 418 mil pontos após
+simplificar; contorno com 1.707 pontos). Cada trecho guarda os nós das pontas
+(`edge_u`/`edge_v`), para a animação interpolar o tempo de chegada.
+
 **Por quê:** hoje o `.npz` guarda só as coordenadas dos nós (cruzamentos). Desenhar cada
 aresta como uma reta entre dois cruzamentos deixa as curvas (Marginal, Av. Sumaré, serras da
 zona sul) com cara de polígono.

@@ -80,6 +80,10 @@ class Solution:
     n_candidates_local: int
     n_candidates_refined: int
     warnings: list[str] = field(default_factory=list)
+    # Dijkstra local completo (sem trânsito), usado na animação da inundação e nas rotas.
+    weight: str = "time"  # "time" (dist em s) ou "length" (dist em m)
+    dist: np.ndarray | None = None  # [N, V]
+    pred: np.ndarray | None = None  # [N, V]
 
 
 def spatially_diverse(order: np.ndarray, xy: np.ndarray, m: int, min_dist: float) -> np.ndarray:
@@ -175,7 +179,8 @@ class Solver:
             selected = pool[picked]
             if len(selected) == 0:
                 return Solution(req, people, [], crit, False, len(pool), 0,
-                                warnings + ["Nenhum candidato válido no pré-filtro local."])
+                                warnings + ["Nenhum candidato válido no pré-filtro local."],
+                                weight=weight, dist=dist, pred=pred)
 
         local_cm = self.local.matrix_from_full(origins, selected, dist, pred, weight)
         cand_points = [Point(float(self.graph.lat[c]), float(self.graph.lon[c]), int(c)) for c in selected]
@@ -222,4 +227,5 @@ class Solver:
             if crit.needs_limit:
                 msg += " (ninguém consegue chegar dentro do limite; tente aumentá-lo)"
             warnings.append(msg + ".")
-        return Solution(req, people, results, crit, live_used, len(pool), len(selected), warnings)
+        return Solution(req, people, results, crit, live_used, len(pool), len(selected), warnings,
+                        weight=weight, dist=dist, pred=pred)

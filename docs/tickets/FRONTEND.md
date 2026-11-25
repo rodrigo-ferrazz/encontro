@@ -57,6 +57,11 @@ sintético.
 
 ## FE-03 · Dados da inundação por busca (backend) · M
 
+**Status:** feito (parte do backend; o endpoint entra no FE-02). `Solution` traz `dist`,
+`pred` e `weight`; `encontro_sp.flood` monta e codifica o anexo (magic `ENCF` + cabeçalho
+JSON com o ranking + `uint16[N×V]`). Medido no grafo real com 4 pessoas: 0,16 MB com gzip
+(0,58 MB no pior caso, pessoas nos extremos da cidade) e ~0,1 s de cálculo.
+
 **Por quê:** a animação precisa do tempo de chegada de cada pessoa a cada nó, para acender
 cada rua no instante certo.
 

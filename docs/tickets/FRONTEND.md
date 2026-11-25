@@ -37,6 +37,12 @@ regenera o cache; os testes continuam passando.
 
 ## FE-02 · API HTTP (backend) · M
 
+**Status:** feito. `src/encontro_sp/api.py` + `mesh.py`. Buscas serializadas por um lock
+(memória N×V, cota e Nominatim compartilhados). Medido no grafo real: `/malha` com 2,6 MB
+em gzip (coordenadas quantizadas em 16 bits, ~1 m) e `/buscar?flood=1` em ~80 ms, 159 KB.
+Cada trecho da malha leva o tempo nos dois sentidos (`seg_t_uv`/`seg_t_vu`), para a frente
+da inundação avançar certo em mão única e se encontrar no meio de uma rua.
+
 **Por quê:** o front não pode chamar a CLI. Além disso, a chave da TomTom precisa ficar no
 servidor.
 

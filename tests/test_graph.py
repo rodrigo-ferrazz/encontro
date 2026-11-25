@@ -166,3 +166,22 @@ def test_old_cache_format_is_rebuilt(tmp_path, monkeypatch):
     assert h.format_version == FORMAT_VERSION and h.n_segments == 3
     # e o cache novo é reaproveitado
     assert load_or_build("Lugar", tmp_path).n_segments == 3 and calls == ["Lugar"]
+
+
+def test_mesh_roundtrip_quantization_and_oneway():
+    from encontro_sp import mesh
+
+    g = RoadGraph(
+        lat=np.array([-23.55, -23.55, -23.54]), lon=np.array([-46.63, -46.62, -46.62]),
+        src=np.array([0, 1, 1]), dst=np.array([1, 0, 2]),
+        time_s=np.array([10.0, 12.0, 30.0]), length_m=np.array([1000.0, 1000.0, 1100.0]),
+        eligible=np.ones(3, dtype=bool),
+    )
+    header, a = mesh.decode(mesh.encode(g).blob)
+    back = mesh.dequantize(a["coords"], header["bbox"])
+    np.testing.assert_allclose(back, g.edge_coords, atol=2e-5)
+    s = int(np.flatnonzero((a["seg_u"] == 1) & (a["seg_v"] == 2))[0])
+    assert a["seg_t_uv"][s] == 300 and a["seg_t_vu"][s] == mesh.NO_WAY  # mão única 1→2
+    s = int(np.flatnonzero((a["seg_u"] == 0) & (a["seg_v"] == 1))[0])
+    assert a["seg_t_uv"][s] == 100 and a["seg_t_vu"][s] == 120
+    assert abs(int(a["seg_len"][s]) - 1021) < 5  # ~0,01° de longitude em SP

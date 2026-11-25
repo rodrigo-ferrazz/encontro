@@ -13,7 +13,7 @@ modo degradado, só com o grafo local. Detalhes de projeto em
 ```bash
 uv sync                      # Python 3.12 + dependências
 cp .env.example .env         # opcional: coloque sua TOMTOM_API_KEY
-uv run encontro baixar-grafo # baixa a malha de SP uma vez (~7 min, ~7 MB em cache/)
+uv run encontro baixar-grafo # baixa a malha de SP uma vez (~7 min, ~10 MB em cache/)
 ```
 
 A chave gratuita da TomTom é criada em <https://developer.tomtom.com>.
@@ -52,6 +52,19 @@ pessoas:
 
 Cada resultado mostra coordenadas (ou o anfitrião), tempo e distância de cada pessoa, se o
 valor veio do trânsito ao vivo ou da estimativa local, e links do Google Maps.
+
+## API HTTP
+
+```bash
+uv run encontro serve            # http://127.0.0.1:8000 (docs em /docs)
+```
+
+| Rota | O que faz |
+|---|---|
+| `POST /buscar` | Corpo JSON `{pessoas: [{nome, endereco}], objetivo, criterio, metrica, k, limite, m, ao_vivo}` (mesmos significados da CLI). Devolve o mesmo JSON de `--json`. |
+| `POST /buscar?flood=1` | Igual, mas devolve o anexo binário da inundação (`src/encontro_sp/flood.py`): tempo de chegada de cada pessoa a cada nó, com o JSON acima no cabeçalho. |
+| `GET /malha` | Geometria das ruas e contorno de SP em binário (`src/encontro_sp/mesh.py`), com ETag. |
+| `GET /geocode?q=` | Geocodifica um endereço (cache permanente; Nominatim a 1 req/s). |
 
 ## Testes
 

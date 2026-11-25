@@ -117,6 +117,19 @@ def baixar_grafo(refresh: bool = typer.Option(False, "--refresh", help="Baixa de
 
 
 @app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8000, "--port"),
+    reload: bool = typer.Option(False, "--reload", help="Recarrega ao editar o código (desenvolvimento)."),
+):
+    """Sobe a API HTTP (FastAPI) usada pelo front-end."""
+    import uvicorn
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    uvicorn.run("encontro_sp.api:create_app", factory=True, host=host, port=port, reload=reload)
+
+
+@app.command()
 def cota():
     """Mostra o uso diário da cota gratuita da TomTom."""
     s = Settings.from_env()

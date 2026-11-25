@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#050404" />
+    <title>Encontro SP</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="map" aria-label="Mapa das ruas de São Paulo"></canvas>
+      <header class="top">
+        <h1>Encontro SP</h1>
+        <p id="status" role="status">Carregando a malha…</p>
+      </header>
+      <footer class="bottom">
+        <span id="fps" hidden></span>
+        <span class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

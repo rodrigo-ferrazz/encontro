@@ -66,10 +66,28 @@ uv run encontro serve            # http://127.0.0.1:8000 (docs em /docs)
 | `GET /malha` | Geometria das ruas e contorno de SP em binário (`src/encontro_sp/mesh.py`), com ETag. |
 | `GET /geocode?q=` | Geocodifica um endereço (cache permanente; Nominatim a 1 req/s). |
 
+## Front-end (web/)
+
+Vite + TypeScript + WebGL2 puro, sem mapa de terceiros: a malha é desenhada a partir de
+`/malha`.
+
+```bash
+cd web && npm install
+npm run dev        # http://localhost:5173 (encaminha /api para `encontro serve` na porta 8000)
+npm run build      # gera web/dist, que `encontro serve` passa a servir em /
+npm test           # vitest
+```
+
+Acrescente `?debug` à URL para ver o FPS.
+
 ## Testes
 
 ```bash
 uv run pytest
+cd web && npm test
 ```
+
+Os testes do front leem fixtures binárias geradas pelo Python (`web/test/fixtures`). Se mudar
+o formato em `mesh.py` ou `flood.py`, rode `UPDATE_FIXTURES=1 uv run pytest`.
 
 Os testes usam um grafo sintético e clientes HTTP simulados, sem acesso à rede.

@@ -15,7 +15,7 @@ N = 11
 
 @pytest.fixture
 def client(geocoder, tmp_path):
-    app = create_app(graph=grid_graph(N), geocoder=geocoder, settings=Settings(cache_dir=tmp_path))
+    app = create_app(graph=grid_graph(N), geocoder=geocoder, settings=Settings(cache_dir=tmp_path), web_dist=None)
     with TestClient(app) as c:
         yield c
 

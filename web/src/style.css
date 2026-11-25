@@ -1,0 +1,22 @@
+:root {
+  --bg: #050404;
+  --fg: #efe6dc;
+  --muted: #9a8c80;
+  --gutter: 16px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#app { position: fixed; inset: 0; overflow: hidden; }
+#map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+#map:active { cursor: grabbing; }
+.top { position: absolute; top: 0; left: 0; right: 0; padding: calc(var(--gutter) + env(safe-area-inset-top)) var(--gutter) 0;
+  pointer-events: none; text-align: center; }
+.top h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .02em; }
+#status { margin: 4px 0 0; color: var(--muted); font-size: 13px; min-height: 1.4em; }
+.bottom { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end;
+  gap: 8px; padding: 0 var(--gutter) calc(8px + env(safe-area-inset-bottom)); pointer-events: none; font-size: 11px; color: var(--muted); }
+.bottom a { color: inherit; pointer-events: auto; }
+.attribution { margin-left: auto; background: rgba(5,4,4,.6); padding: 2px 6px; border-radius: 4px; }
+#fps { font-variant-numeric: tabular-nums; }

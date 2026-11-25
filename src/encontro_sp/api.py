@@ -16,12 +16,14 @@ from __future__ import annotations
 import gzip
 import logging
 import threading
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from . import criteria, flood, mesh, output
@@ -33,6 +35,9 @@ from .quota import QuotaTracker
 from .solver import METRICS, Person, Request as SolveRequest, Solver
 
 log = logging.getLogger(__name__)
+
+# Front-end compilado (`npm run build` em web/). Se existir, é servido na raiz.
+WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 
 MAX_PEOPLE = 12
 
@@ -114,6 +119,7 @@ def create_app(
     live_provider=None,
     quota: QuotaTracker | None = None,
     settings: Settings | None = None,
+    web_dist: Path | None = WEB_DIST,
 ) -> FastAPI:
     """Monta a API. Sem `graph`, tudo é criado a partir das configurações no startup."""
     state: dict = {}
@@ -199,5 +205,8 @@ def create_app(
             raise HTTPException(404, detail=str(e))
         node, snap_m = state["graph"].snap(p.lat, p.lon, eligible_only=True)
         return {"lat": p.lat, "lon": p.lon, "rotulo": p.label, "fonte": p.source, "snap_m": round(snap_m, 1)}
+
+    if web_dist is not None and (web_dist / "index.html").exists():
+        app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
 
     return app

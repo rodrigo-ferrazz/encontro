@@ -90,6 +90,12 @@ abaixo de 1 s com o grafo carregado.
 
 ## FE-04 · Renderização da malha em WebGL (front) · M
 
+**Status:** feito. `web/`: WebGL2 puro (sem deck.gl/regl), cada pedaço de rua (≤ 60 m, 404
+mil no total) é uma instância desenhada como retângulo com borda suavizada. Decodificar a
+malha leva ~4 ms e montar os pedaços ~14 ms; o que pesa na carga é baixar 2,6 MB (gzip).
+Conferido no Chrome (headless, SwiftShader). Os FPS reais em notebook/celular ainda precisam
+ser medidos à mão com `?debug`.
+
 **Por quê:** são cerca de 300 mil segmentos. Com SVG ou Canvas 2D, a animação não passa de
 poucos FPS. Precisa de GPU.
 

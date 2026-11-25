@@ -214,6 +214,15 @@ exatamente onde as frentes se cruzam.
 
 ## FE-09 · Exportar vídeo vertical 9:16 (opcional) · M
 
+**Status:** feito (no navegador, com `MediaRecorder`). O botão 🎬 nos controles desenha o
+mapa em 1080×1920 com o mesmo renderer, compõe num canvas 2D o título, o ponto de encontro,
+nomes grandes, relógio, legenda (FE-08) e "© OpenStreetMap contributors", e grava ~14,5 s
+(12 s de inundação + 2,5 s parado no encontro). Prefere MP4 (H.264) e cai para WebM.
+`?quadro=600` (ou `?quadro=fim`) mostra um quadro do vídeo para conferir o layout. O
+arquivo gravado de verdade ainda precisa ser conferido à mão: o Chrome sem tela usa GPU por
+software e não grava em tempo real. A opção com ffmpeg no servidor (qualidade constante)
+ficou de fora.
+
 - Gravar a animação do canvas em MP4/WebM (`MediaRecorder` no navegador, ou render
   *offline* quadro a quadro com ffmpeg no backend, que dá qualidade constante).
 - Título no topo e rótulos legíveis no celular.

@@ -3,6 +3,7 @@ import { computeFloodPieces, personColor } from "./flood";
 import { buildPieces, extent, Projection, ringPieces, type Pieces } from "./geometry";
 import { MarkerLayer, type Marker } from "./markers";
 import { floodLegend } from "./legend";
+import { LAYOUT, previewFrame, record, type RecordSource } from "./record";
 import { SearchForm, type GeocodeResult } from "./form";
 import { ResultsPanel } from "./panel";
 import { parseQuery, requestBody, toQuery, type SearchState } from "./state";
@@ -82,6 +83,8 @@ class App {
   people: Marker[] = [];
   colors = [] as ReturnType<typeof hex>[];
   dirty = true;
+  recording = false;
+  legendText = "";
   userMoved = false;
   home: [number, number, number, number];
 
@@ -141,6 +144,7 @@ class App {
     legendEl.hidden = false;
     legendEl.classList.toggle("live", lg.live);
     legendEl.querySelector(".legend-text")!.textContent = lg.text;
+    this.legendText = lg.text;
     legendEl.querySelector(".info")!.textContent = lg.detail;
     this.panel.render(cards, res.avisos, (i) => this.select(i));
     this.select(null);
@@ -211,8 +215,97 @@ class App {
     this.dirty = true;
   }
 
+  /** Fonte para a gravação do vídeo 9:16 (FE-09). */
+  videoSource(): RecordSource {
+    const tl = this.timeline!;
+    const res = this.lastSearch!;
+    return {
+      glCanvas: canvas,
+      tEnd: tl.end,
+      begin: (w, h) => {
+        tl.pause();
+        this.recording = true;
+        const saved = { cx: this.cam.cx, cy: this.cam.cy, scale: this.cam.scale, t: tl.t, userMoved: this.userMoved };
+        const r = this.renderer;
+        r.dpr = 1;
+        canvas.width = w;
+        canvas.height = h;
+        this.cam.resize(w, h);
+        const pts = [...res.pessoas, ...res.resultados.slice(0, 1)].map((p) => [this.proj.x(p.lon), this.proj.y(p.lat)]);
+        const xs = pts.map((p) => p[0]);
+        const ys = pts.map((p) => p[1]);
+        // folga generosa: a inundação passa um pouco das pessoas
+        const padX = (Math.max(...xs) - Math.min(...xs)) * 0.15 + 500;
+        const padY = (Math.max(...ys) - Math.min(...ys)) * 0.15 + 500;
+        this.cam.fit(
+          [Math.min(...xs) - padX, Math.min(...ys) - padY, Math.max(...xs) + padX, Math.max(...ys) + padY],
+          { top: LAYOUT.top, bottom: LAYOUT.bottom, left: LAYOUT.side, right: LAYOUT.side },
+          false,
+        );
+        $("markers").hidden = true;
+        return () => {
+          $("markers").hidden = false;
+          this.recording = false;
+          this.resize();
+          Object.assign(this.cam, { cx: saved.cx, cy: saved.cy, scale: saved.scale });
+          this.userMoved = saved.userMoved;
+          tl.seek(saved.t);
+          this.dirty = true;
+        };
+      },
+      drawAt: (t) => {
+        tl.t = t;
+        this.draw();
+      },
+      overlay: () => {
+        const best = res.resultados[0];
+        const where = best ? (best.anfitriao ? `casa de ${best.anfitriao}` : (best.via ?? "ponto sem nome")) : "sem resultado";
+        return {
+          title: "Encontro SP",
+          subtitle: `Ponto de encontro: ${where}`,
+          legend: this.legendText,
+          unit: this.unit,
+          tStar: this.meet?.tStar ?? Infinity,
+          people: res.pessoas.map((p, i) => {
+            const [x, y] = this.cam.toScreen(this.proj.x(p.lon), this.proj.y(p.lat));
+            return { name: p.nome, color: personColor(i), x, y };
+          }),
+          meet: best ? (([x, y]) => ({ x, y }))(this.cam.toScreen(this.proj.x(best.lon), this.proj.y(best.lat))) : null,
+        };
+      },
+    };
+  }
+
+  async exportVideo(): Promise<void> {
+    if (!this.timeline || !this.lastSearch || this.recording) return;
+    const btn = $<HTMLButtonElement>("video");
+    btn.disabled = true;
+    const before = status.textContent;
+    try {
+      const file = await record(this.videoSource(), (f) => {
+        status.textContent = `Gravando o vídeo… ${Math.round(f * 100)}%`;
+      });
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      status.textContent = `Vídeo salvo: ${file.name}`;
+    } catch (e) {
+      status.textContent = `Erro ao gravar: ${(e as Error).message}`;
+      console.error(e);
+      setTimeout(() => (status.textContent = before), 6000);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   bindControls(tl: Timeline): void {
     $("controls").hidden = false;
+    $<HTMLButtonElement>("video").onclick = () => void this.exportVideo();
     const play = $<HTMLButtonElement>("play");
     const scrub = $<HTMLInputElement>("scrub");
     play.onclick = () => tl.toggle();
@@ -271,8 +364,8 @@ class App {
     const loop = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
-      if (this.timeline?.step(dt)) this.syncControls();
-      if (this.dirty || debug) {
+      if (!this.recording && this.timeline?.step(dt)) this.syncControls();
+      if (!this.recording && (this.dirty || debug)) {
         this.draw();
         this.dirty = false;
         frames++;
@@ -368,6 +461,12 @@ async function start() {
     const flood = await run();
     const r = Number(params.get("r")); // ?r=2: já abre com as rotas do 2º resultado
     if (flood && r >= 1) app.select(r - 1);
+    const q = params.get("quadro"); // ?quadro=600: mostra um quadro do vídeo 9:16 (depuração)
+    if (flood && q !== null) {
+      const c = previewFrame(app.videoSource(), q === "fim" ? flood.header.t_fim : Number(q));
+      c.style.cssText = "position:fixed;inset:0;margin:auto;height:100vh;width:auto;max-width:100vw;z-index:10;background:#050404";
+      document.body.append(c);
+    }
   } else {
     status.textContent = "Monte a busca e clique em Buscar";
   }

@@ -84,3 +84,15 @@ def test_values_saturate_below_unreached():
 def test_compresses_well(sol):
     blob = flood.build(sol).encode()
     assert len(gzip.compress(blob)) < len(blob)
+
+
+def test_routes_go_from_each_person_to_each_result(sol, grid):
+    data = flood.build(sol)
+    assert len(data.routes) == len(sol.results)
+    for r, per_person in zip(sol.results, data.routes):
+        for p, path in zip(sol.people, per_person):
+            assert path[0] == p.node and path[-1] == r.node
+            # arestas consecutivas existem no grafo e o tempo bate com o Dijkstra
+            assert len(path) - 1 == round(sol.dist[sol.people.index(p), r.node] / 10)
+    back = flood.decode(data.encode())
+    assert back.routes == data.routes

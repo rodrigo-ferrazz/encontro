@@ -100,7 +100,7 @@ def to_dict(sol: Solution) -> dict:
         "metrica": sol.request.metric,
         "transito_ao_vivo": sol.live_used,
         "pessoas": [
-            {"nome": p.person.name, "endereco": p.person.address, "lat": p.geo.lat,
+            {"nome": p.person.name, "endereco": p.person.address, "rotulo": p.geo.label, "lat": p.geo.lat,
              "lon": p.geo.lon, "geocoder": p.geo.source, "snap_m": round(p.snap_m, 1)}
             for p in sol.people
         ],

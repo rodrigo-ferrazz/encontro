@@ -173,20 +173,28 @@ class RoadGraph:
             return_predecessors=predecessors,
         )
 
+    @staticmethod
+    def path_nodes(pred_row: np.ndarray, source: int, target: int) -> list[int] | None:
+        """Nós do caminho de source até target codificado em `pred_row` (None se não há)."""
+        nodes = [int(target)]
+        cur = int(target)
+        while cur != source:
+            cur = int(pred_row[cur])
+            if cur < 0:
+                return None
+            nodes.append(cur)
+        nodes.reverse()
+        return nodes
+
     def path_cost(
         self, pred_row: np.ndarray, source: int, target: int, weight: str
     ) -> float:
         """Soma `weight` ao longo do caminho codificado em `pred_row` (de source até target)."""
         if source == target:
             return 0.0
-        nodes = [target]
-        cur = target
-        while cur != source:
-            cur = int(pred_row[cur])
-            if cur < 0:
-                return float("inf")
-            nodes.append(cur)
-        nodes.reverse()
+        nodes = self.path_nodes(pred_row, source, target)
+        if nodes is None:
+            return float("inf")
         m = self.csr(weight)
         return float(np.asarray(m[nodes[:-1], nodes[1:]]).sum())
 

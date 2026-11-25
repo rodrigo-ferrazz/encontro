@@ -1,5 +1,12 @@
 // Câmera 2D: centro em metros + escala em pixels por metro. Tela com y para baixo.
 
+export interface Pad {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 export class Camera {
   cx = 0;
   cy = 0;
@@ -14,14 +21,27 @@ export class Camera {
     this.height = Math.max(1, height);
   }
 
-  /** Enquadra o retângulo [x0, y0, x1, y1] (metros) com `pad` px de folga. */
-  fit([x0, y0, x1, y1]: [number, number, number, number], pad = 16): void {
-    this.cx = (x0 + x1) / 2;
-    this.cy = (y0 + y1) / 2;
-    const sx = (this.width - 2 * pad) / Math.max(x1 - x0, 1);
-    const sy = (this.height - 2 * pad) / Math.max(y1 - y0, 1);
-    this.scale = Math.max(Math.min(sx, sy), 1e-6);
-    this.minScale = this.scale * 0.5;
+  /**
+   * Enquadra o retângulo [x0, y0, x1, y1] (metros) com folga em px — um número para os quatro
+   * lados ou {top, right, bottom, left} (ex.: para não ficar atrás do painel).
+   * `home` = true redefine o zoom mínimo (enquadramento da cidade inteira).
+   */
+  fit(
+    [x0, y0, x1, y1]: [number, number, number, number],
+    pad: number | Pad = 16,
+    home = true,
+  ): void {
+    const p = typeof pad === "number" ? { top: pad, right: pad, bottom: pad, left: pad } : pad;
+    const w = Math.max(this.width - p.left - p.right, 1);
+    const h = Math.max(this.height - p.top - p.bottom, 1);
+    const scale = Math.max(Math.min(w / Math.max(x1 - x0, 1), h / Math.max(y1 - y0, 1)), 1e-6);
+    this.scale = home ? scale : Math.min(this.maxScale, Math.max(this.minScale, scale));
+    if (home) this.minScale = this.scale * 0.5;
+    // centro do retângulo no centro da área livre
+    const freeCx = p.left + w / 2;
+    const freeCy = p.top + h / 2;
+    this.cx = (x0 + x1) / 2 - (freeCx - this.width / 2) / this.scale;
+    this.cy = (y0 + y1) / 2 + (freeCy - this.height / 2) / this.scale;
   }
 
   toScreen(x: number, y: number): [number, number] {

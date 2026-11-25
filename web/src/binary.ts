@@ -91,6 +91,8 @@ export interface Flood {
     t_fim: number;
     no_encontro: number | null;
     resultado?: any;
+    /** rotas[r][i]: nós do caminho da pessoa i até o resultado r */
+    rotas?: (number[] | null)[][];
   };
   /** arrival[p * nos + v], em segundos ou metros; nao_alcancado = não chega */
   arrival: Uint16Array;

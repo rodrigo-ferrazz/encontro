@@ -42,3 +42,17 @@ describe("Camera", () => {
     expect(c.scale).toBeCloseTo(c.minScale);
   });
 });
+
+describe("Camera.fit com folgas diferentes", () => {
+  it("centraliza o retângulo na área livre (fora do painel)", () => {
+    const c = new Camera();
+    c.resize(1000, 600);
+    c.fit([0, 0, 1000, 1000], 0); // home
+    c.fit([0, 0, 100, 100], { top: 0, right: 400, bottom: 0, left: 0 }, false);
+    const [sx, sy] = c.toScreen(50, 50);
+    expect(sx).toBeCloseTo(300); // meio dos 600 px livres à esquerda
+    expect(sy).toBeCloseTo(300);
+    const [ex] = c.toScreen(100, 50);
+    expect(ex).toBeLessThanOrEqual(600 + 1e-6);
+  });
+});

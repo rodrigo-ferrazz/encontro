@@ -144,6 +144,15 @@ linha do tempo responde na hora.
 
 ## FE-06 · Ponto de encontro e painel de resultados (front) · M
 
+**Status:** feito. O anexo da inundação traz `rotas[r][i]` (nós do caminho pelos
+predecessores do Dijkstra local; não precisou de `/rota`), e o front desenha cada passo
+pela geometria real da rua. Marcadores "Nome · referência", pino 1 pulsante no encontro,
+pinos 2..K numerados e clicáveis, painel com cartões (tempo, distância, selo ao vivo /
+estimativa, links do Maps) à direita no desktop e embaixo no celular. Clicar num cartão ou
+pino desenha as rotas e enquadra o mapa fora do painel; `?r=2` abre já selecionado. O teste
+`results.test.ts` confere que os cartões repetem o JSON da API na mesma ordem. Atenção: a
+rota desenhada é a do grafo local (sem trânsito).
+
 **Escopo**
 - Marcadores das pessoas com rótulo "Nome · Bairro/referência" (como no vídeo).
 - Pin do 1º colocado com efeito de "encontro" ao fim da animação; os demais do top-K com

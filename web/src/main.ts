@@ -1,7 +1,9 @@
 import { decodeFlood, decodeMesh, type Flood, type Mesh } from "./binary";
 import { computeFloodPieces, personColor } from "./flood";
 import { buildPieces, extent, Projection, ringPieces, type Pieces } from "./geometry";
-import { MarkerLayer } from "./markers";
+import { MarkerLayer, type Marker } from "./markers";
+import { ResultsPanel } from "./panel";
+import { resultCards, routePieces, segmentIndex, shortPlace, type ApiSearch } from "./results";
 import { FloodBatch, hex, LineBatch, Renderer } from "./renderer";
 import { fmtSim, Timeline } from "./timeline";
 import { attachControls, Camera } from "./view";
@@ -61,6 +63,12 @@ class App {
   timeline: Timeline | null = null;
   unit: "s" | "m" = "s";
   meet: { el: HTMLElement; tStar: number } | null = null;
+  pins: Marker[] = [];
+  routes: { batch: LineBatch; color: ReturnType<typeof hex> }[] = [];
+  routeNodes: (number[] | null)[][] = [];
+  segIdx: Map<number, number> | null = null;
+  lastSearch: ApiSearch | null = null;
+  panel = new ResultsPanel($("results"), $("results-body"), $<HTMLButtonElement>("results-toggle"));
   colors = [] as ReturnType<typeof hex>[];
   dirty = true;
   userMoved = false;
@@ -100,14 +108,28 @@ class App {
     this.colors = Array.from({ length: h.pessoas }, (_, i) => hex(personColor(i)));
 
     this.markers.clear();
-    const res = h.resultado;
-    res.pessoas.forEach((p: any, i: number) =>
-      this.markers.add(p.lat, p.lon, { label: p.nome, color: personColor(i) }),
+    const res = h.resultado as ApiSearch;
+    this.lastSearch = res;
+    res.pessoas.forEach((p, i) =>
+      this.markers.add(p.lat, p.lon, { label: `${p.nome} · ${shortPlace(p.endereco)}`, color: personColor(i) }),
     );
-    const best = res.resultados[0];
-    this.meet = best
-      ? { el: this.markers.add(best.lat, best.lon, { className: "meet" }).el, tStar: h.t_encontro }
-      : null;
+    // demais do top-K: pinos menores e numerados (desenhados antes, ficam por baixo do 1º)
+    const cards = resultCards(res);
+    this.pins = [];
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const c = cards[i];
+      const m = this.markers.add(c.lat, c.lon, {
+        className: i === 0 ? "meet" : "pin",
+        text: String(c.rank),
+        title: `#${c.rank} ${c.title}`,
+        onClick: () => this.select(i),
+      });
+      this.pins[i] = m;
+    }
+    this.meet = cards.length ? { el: this.pins[0].el, tStar: h.t_encontro } : null;
+    this.routeNodes = h.rotas ?? [];
+    this.panel.render(cards, res.avisos, (i) => this.select(i));
+    this.select(null);
 
     // 1 min simulado ≈ 0,5 s real; em distância, ~1 km por segundo real
     const tl = new Timeline(h.t_fim, h.unidade === "s" ? 120 : 1000);
@@ -117,6 +139,45 @@ class App {
     const t0 = params.get("t"); // ?t=600: abre parado nesse instante (depuração, capturas)
     if (t0 !== null) tl.seek(t0 === "fim" ? tl.end : Number(t0));
     else tl.play();
+  }
+
+  /** Destaca o resultado i e desenha a rota de cada pessoa até ele (null = nenhum). */
+  select(i: number | null): void {
+    const gl = this.renderer.gl;
+    for (const r of this.routes) r.batch.dispose(gl);
+    this.routes = [];
+    this.pins.forEach((p, k) => p.el.classList.toggle("sel", k === i));
+    this.panel.select(i);
+    if (i !== null && this.routeNodes[i]) {
+      this.segIdx ??= segmentIndex(this.mesh);
+      this.routeNodes[i].forEach((nodes, person) => {
+        if (!nodes || nodes.length < 2) return;
+        const pieces = routePieces(this.mesh, this.segIdx!, this.proj, nodes);
+        this.routes.push({ batch: new LineBatch(gl, pieces), color: hex(personColor(person)) });
+      });
+      this.focus(i);
+    }
+    this.dirty = true;
+  }
+
+  /** Enquadra as pessoas e o resultado i, deixando livre o espaço do painel. */
+  focus(i: number): void {
+    const res = this.timeline && this.pins[i] ? this.lastSearch : null;
+    if (!res) return;
+    const pts = [...res.pessoas, res.resultados[i]].map((p) => [this.proj.x(p.lon), this.proj.y(p.lat)]);
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const box: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    const panel = $("results").getBoundingClientRect();
+    const view = canvas.getBoundingClientRect();
+    const wide = panel.left > view.width / 2; // painel à direita (desktop) ou embaixo (celular)
+    this.cam.fit(box, {
+      top: 90,
+      left: 40,
+      right: wide ? view.right - panel.left + 40 : 40,
+      bottom: wide ? 110 : view.bottom - panel.top + 40,
+    }, false);
+    this.userMoved = true;
   }
 
   bindControls(tl: Timeline): void {
@@ -164,6 +225,10 @@ class App {
     r.lines(this.border, f, BORDER, 1.2);
     if (this.flood && this.timeline) {
       r.flood(this.flood, f, { t: this.timeline.t, hot: this.unit === "s" ? 60 : 500, colors: this.colors }, w);
+    }
+    for (const rt of this.routes) {
+      r.lines(rt.batch, f, hex("#050404", 0.9), 6); // contorno escuro para destacar do fundo
+      r.lines(rt.batch, f, rt.color, 3);
     }
     this.markers.update(this.cam);
   }
@@ -213,6 +278,8 @@ async function start() {
     ao_vivo: params.get("ao_vivo") === "1",
   });
   app.showFlood(flood);
+  const r = Number(params.get("r")); // ?r=2: já abre com as rotas do 2º resultado
+  if (r >= 1) app.select(r - 1);
   const best = flood.header.resultado.resultados[0];
   status.textContent = best ? `Ponto de encontro: ${best.via ?? "sem nome"}` : "Nenhum ponto encontrado";
 }

@@ -15,13 +15,23 @@ export class MarkerLayer {
     private proj: Projection,
   ) {}
 
-  add(lat: number, lon: number, opts: { label?: string; color?: string; className?: string }): Marker {
+  add(
+    lat: number,
+    lon: number,
+    opts: { label?: string; color?: string; className?: string; text?: string; onClick?: () => void; title?: string },
+  ): Marker {
     const el = document.createElement("div");
     el.className = "marker" + (opts.className ? ` ${opts.className}` : "");
     if (opts.color) el.style.setProperty("--c", opts.color);
     const dot = document.createElement("span");
     dot.className = "dot";
+    if (opts.text) dot.textContent = opts.text;
     el.appendChild(dot);
+    if (opts.title) el.title = opts.title;
+    if (opts.onClick) {
+      el.classList.add("clickable");
+      el.addEventListener("click", opts.onClick);
+    }
     if (opts.label) {
       const lab = document.createElement("span");
       lab.className = "label";

@@ -146,6 +146,10 @@ export class LineBatch {
     gl.bindVertexArray(null);
   }
   count: number;
+  dispose(gl: WebGL2RenderingContext): void {
+    gl.deleteBuffer(this.buffer);
+    gl.deleteVertexArray(this.vao);
+  }
 }
 
 /** Atributos da inundação, por pedaço, apoiados no mesmo buffer de posições das ruas. */

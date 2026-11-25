@@ -39,6 +39,8 @@ class FloodData:
     t_end: float  # fim da animação: t_star × (1 + margem)
     meeting_node: int | None  # nó do 1º colocado (None se não houve resultado)
     extra: dict | None = None  # anexado ao cabeçalho (ex.: o ranking de output.to_dict)
+    # rotas[r][i]: nós do caminho (grafo local) da pessoa i até o resultado r (None = sem caminho)
+    routes: list[list[list[int] | None]] | None = None
 
     @property
     def header(self) -> dict:
@@ -55,6 +57,8 @@ class FloodData:
         }
         if self.extra is not None:
             h["resultado"] = self.extra
+        if self.routes is not None:
+            h["rotas"] = self.routes
         return h
 
     def encode(self) -> bytes:
@@ -80,6 +84,7 @@ def decode(blob: bytes) -> FloodData:
         t_end=header["t_fim"],
         meeting_node=header["no_encontro"],
         extra=header.get("resultado"),
+        routes=header.get("rotas"),
     )
 
 
@@ -100,6 +105,21 @@ def meeting_time(sol: Solution) -> tuple[float, int | None]:
     return float(col[np.isfinite(col)].max(initial=0.0)), node
 
 
+def routes(sol: Solution) -> list[list[list[int] | None]]:
+    """Caminho de cada pessoa até cada resultado, pelos predecessores do Dijkstra local.
+
+    É o caminho mais rápido *sem trânsito*: com trânsito ao vivo, a TomTom pode preferir outro.
+    """
+    if sol.pred is None:
+        return []
+    from .graph import RoadGraph
+
+    return [
+        [RoadGraph.path_nodes(sol.pred[i], p.node, r.node) for i, p in enumerate(sol.people)]
+        for r in sol.results
+    ]
+
+
 def build(sol: Solution, margin: float = DEFAULT_MARGIN, extra: dict | None = None) -> FloodData:
     t_star, node = meeting_time(sol)
     t_end = min(t_star * (1 + margin), float(MAX_VALUE))
@@ -108,4 +128,4 @@ def build(sol: Solution, margin: float = DEFAULT_MARGIN, extra: dict | None = No
     ok = np.isfinite(d) & (d <= t_end)
     arrival[ok] = np.minimum(np.rint(d[ok]), MAX_VALUE).astype(np.uint16)
     unit = "s" if sol.weight == "time" else "m"
-    return FloodData(arrival, unit, t_star, t_end, node, extra)
+    return FloodData(arrival, unit, t_star, t_end, node, extra, routes(sol))

@@ -38,3 +38,16 @@ describe("buildPieces", () => {
     expect(ringPieces(mesh, proj).length).toBe(0);
   });
 });
+
+describe("frações exatas nas pontas", () => {
+  it("todo trecho começa em 0 e termina exatamente em 1", () => {
+    const mesh = decodeMesh(fixture("grid_mesh.bin"));
+    const p = buildPieces(mesh, Projection.forMesh(mesh), 7); // pedaços tortos de propósito
+    for (let j = 0; j < p.count; j++) {
+      const first = j === 0 || p.seg[j - 1] !== p.seg[j];
+      const last = j === p.count - 1 || p.seg[j + 1] !== p.seg[j];
+      if (first) expect(p.frac[2 * j]).toBe(0);
+      if (last) expect(p.frac[2 * j + 1]).toBe(1);
+    }
+  });
+});

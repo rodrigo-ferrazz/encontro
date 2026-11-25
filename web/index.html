@@ -10,14 +10,29 @@
   <body>
     <main id="app">
       <canvas id="map" aria-label="Mapa das ruas de São Paulo"></canvas>
+      <div id="markers" aria-hidden="true"></div>
       <header class="top">
         <h1>Encontro SP</h1>
         <p id="status" role="status">Carregando a malha…</p>
       </header>
-      <footer class="bottom">
-        <span id="fps" hidden></span>
-        <span class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</span>
-      </footer>
+      <section class="bottom">
+        <div id="controls" class="controls" hidden>
+          <button id="play" type="button" aria-label="Pausar">❚❚</button>
+          <button id="restart" type="button" aria-label="Reiniciar">↺</button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Linha do tempo" />
+          <output id="clock">0:00</output>
+          <select id="speed" aria-label="Velocidade">
+            <option value="0.5">0,5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </div>
+        <footer class="foot">
+          <span id="fps" hidden></span>
+          <span class="attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</span>
+        </footer>
+      </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

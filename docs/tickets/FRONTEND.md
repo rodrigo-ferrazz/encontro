@@ -114,6 +114,15 @@ carga inicial abaixo de 3 s numa rede 4G boa.
 
 ## FE-05 · Animação da inundação (front) · G
 
+**Status:** feito. A chegada em cada ponta de cada pedaço (e quem chega primeiro) é
+calculada uma vez por busca na CPU (`web/src/flood.ts`, ~400 mil pedaços × N pessoas); o
+shader só compara com `u_t`. Sobreposição: **quem chegou primeiro** fica com a rua. Frente
+quente nos últimos 60 s (500 m na métrica de distância), brilho aditivo fraco + linha com
+alfa normal (somar tudo estourava em branco na cidade inteira). Controles: play/pause
+(também na barra de espaço), reiniciar, velocidade 0,5–4×, arrastar a linha do tempo;
+`?t=600` ou `?t=fim` abre parado num instante. Pessoas ainda vêm do exemplo (ou de
+`?p=Nome|endereço`) até o FE-07. FPS reais ainda precisam ser medidos à mão com `?debug`.
+
 **Por quê:** é o coração do visual.
 
 **Escopo**

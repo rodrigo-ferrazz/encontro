@@ -2,6 +2,8 @@
   --bg: #050404;
   --fg: #efe6dc;
   --muted: #9a8c80;
+  --panel: rgba(18, 14, 12, 0.82);
+  --line: rgba(255, 240, 225, 0.14);
   --gutter: 16px;
   color-scheme: dark;
 }
@@ -11,12 +13,37 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
 #app { position: fixed; inset: 0; overflow: hidden; }
 #map { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
 #map:active { cursor: grabbing; }
+#markers { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
 .top { position: absolute; top: 0; left: 0; right: 0; padding: calc(var(--gutter) + env(safe-area-inset-top)) var(--gutter) 0;
   pointer-events: none; text-align: center; }
 .top h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .02em; }
 #status { margin: 4px 0 0; color: var(--muted); font-size: 13px; min-height: 1.4em; }
-.bottom { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end;
-  gap: 8px; padding: 0 var(--gutter) calc(8px + env(safe-area-inset-bottom)); pointer-events: none; font-size: 11px; color: var(--muted); }
-.bottom a { color: inherit; pointer-events: auto; }
+
+.bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 var(--gutter) calc(8px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.controls { pointer-events: auto; display: flex; align-items: center; gap: 8px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; max-width: 560px; width: 100%; margin: 0 auto;
+  backdrop-filter: blur(6px); }
+.controls[hidden] { display: none; }
+.controls button, .controls select { background: transparent; color: var(--fg); border: 1px solid var(--line);
+  border-radius: 8px; height: 36px; min-width: 36px; font: inherit; cursor: pointer; }
+.controls select { padding: 0 6px; }
+.controls input[type=range] { flex: 1; min-width: 60px; accent-color: #ffd9a8; }
+#clock { font-variant-numeric: tabular-nums; min-width: 3.5em; text-align: right; font-size: 14px; }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); }
+.foot a { color: inherit; pointer-events: auto; }
 .attribution { margin-left: auto; background: rgba(5,4,4,.6); padding: 2px 6px; border-radius: 4px; }
 #fps { font-variant-numeric: tabular-nums; }
+
+.marker { position: absolute; left: 0; top: 0; will-change: transform; }
+.marker .dot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 0 2px #050404, 0 0 12px 2px var(--c); }
+.marker .label { position: absolute; left: 10px; top: -9px; white-space: nowrap; font-size: 12px; font-weight: 600;
+  color: var(--fg); text-shadow: 0 0 4px #000, 0 0 2px #000; }
+.marker.meet .dot { width: 18px; height: 18px; margin: -9px 0 0 -9px; background: #fff; box-shadow: 0 0 0 2px #050404, 0 0 18px 6px #fff; }
+.marker.meet.on .dot { animation: pulse 1.2s ease-out infinite; }
+.marker.meet:not(.on) { opacity: 0; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 2px #050404, 0 0 0 0 rgba(255,255,255,.9); }
+  100% { box-shadow: 0 0 0 2px #050404, 0 0 0 26px rgba(255,255,255,0); } }
+@media (prefers-reduced-motion: reduce) { .marker.meet.on .dot { animation: none; } }

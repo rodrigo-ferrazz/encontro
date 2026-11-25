@@ -93,6 +93,8 @@ export function buildPieces(mesh: Mesh, proj: Projection, maxLen = 60): Pieces {
       }
       acc += len;
     }
+    // a última ponta é exatamente o nó v (o arredondamento não pode deixar 0,9999999)
+    if (j > 0 && seg[j - 1] === s) frac[2 * (j - 1) + 1] = 1;
   }
   return { count, pos, seg, frac };
 }
